@@ -1,4 +1,4 @@
-    /* The Binary Function Generator is a bytebeat-based, 8-bit oscillator for */
+    /* The Binary Function Computer is a bytebeat-based, 8-bit oscillator for */
     /* modular systems, hosted on the Arduino microcontroller platform. */
 
     /* Copyright (C) 2013  Erik Källman (vurma) */
