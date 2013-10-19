@@ -25,15 +25,20 @@
 
 //Each comparator value has an old and a new state. Even index = new states, odd indexes = old. See setComp() for use. Increment this value by two if more comparator values are added.
 int compState[4];
+unsigned long compVals[2];
+int compClk[2];
+unsigned long compAvg = 0;
+unsigned long compMax = 0;
+
 
 // Set mode values for the variable inputs of dI 0 and 1:
 int m1val = 1;
 int m2val = 2;
 const int mDflt = 0; //Default mode
-const int led0 =  4;
-const int led1 =  5;
-const int led2 =  6;
-const int led3 =  7;
+/* const int led0 =  4; */
+/* const int led1 =  5; */
+/* const int led2 =  6; */
+/* const int led3 =  7; */
 
 int modes[3]; //The selectable modes contains two switchable and one default id.
 int rst = 0; //Function reset value
@@ -51,28 +56,28 @@ long t = 0;
 int tCounter = 0;
 unsigned long clkTime;
 
-int i = 0;
+int l;
 
 long* C[4]; //All mode constants are stored in this 2D array. Accessed as: C[mode index][constant index]
 
-static int maxPeriod = 64; //Maximum iteration steps for one period of the wave.
-unsigned long waveFun[64]; //A vector to store one period of the wavefunction. Used for the comparator training mode.
+static int maxIt = 16384; //Maximum iteration steps for one period of the wave.
+int maxWf = 450;
+unsigned long waveFun[450]; //A vector to store one period of the wavefunction. Used for the comparator training mode.
 
 int tModeFlag = 0;
 int lastTModeFlag = 0;
 
-int compAvg = 0;
-int compMax = 0;
-
 void setup()  {
-  // set bit 3 in data direction register B to 1 to configure Port B pin 3 for output:
+
+  //OUTPUTs
+    // set bit 3 in data direction register B to 1 to configure Port B pin 3 for output:
   pinMode(11, OUTPUT);
   pinMode(13, OUTPUT);
-  pinMode(12, INPUT);
-  pinMode(led0, OUTPUT);
-  pinMode(led1, OUTPUT);
-  pinMode(led2, OUTPUT);
-  pinMode(led3, OUTPUT);
+  pinMode(9, OUTPUT);
+  pinMode(10, OUTPUT);
+
+  //INPUTs
+  pinMode(3, INPUT);
 
   DDRB |= 1 << 3;
   // I forget what this does!
@@ -95,7 +100,7 @@ void setup()  {
   //Serial.begin(9600);
 }
 
-int getMode(){
+int funMode(){
 
   byte modeSwitch[2];
   int m = mDflt;
@@ -135,17 +140,18 @@ void setLEDs(int state){
   }
 }
 
-void blinkLED(int id, int n, int s) {
-  //Toggles digital output @id from LOW to HIGH n times. Ends in state @s.
-  int j;
-  for(j=0;j<=n,j++){
+void blinkLED(int id, int n, int s, int d) {
+  //Toggles digital output @id from LOW to HIGH @n times with a @d ms delay in between blinks. Ends in state @s.
+  int j = 0;
+  for(j=0;j<n;j++) {
     digitalWrite(id, HIGH);
-    delay(250);
+    delay(d);
     digitalWrite(id, LOW);
+    //Serial.print(78);
+    delay(d);
   }
-  digitalWrite(id,s);
+  digitalWrite(id, s);
 }
-
 
 void setClock(){
 
@@ -164,89 +170,117 @@ void setClock(){
   }
 }
 
-
-long setFunction() {
+long setFunction(int id) {
   long fun;
   long* k;
-  switch (modeId) {
+  switch (id){
   case 0:
     k = C[0];
-    //OCR2A = k[0]*t&t>>k[1]*t+((t>>k[2]&5))*t&t>>k[3];
-    //OCR2A = ((t<<1)^((t<<1)+(t>>7)&t>>12))|t>>(4-(1^7&(t>>19)))|t>>7;
-    fun = k[0]*t&t>>8;
+    //fun = k[0]*t&t>>k[1]*t+((t>>k[2]&5))*t&t>>k[3];
+    fun = ((t<<1)^((t<<1)+(t>>7)&t>>12))|t>>(4-(1^7&(t>>19)))|t>>7;
+    //fun = k[0]*t&t>>8;
     break;
   }
-
   return fun;
 }
 
 void setTMode(long f) {
   //setTMode stores one complete period of the wavefunction and sets comparator levels according to the maximum values in order to derive triggers based on the wavefunction.
 
-  if((lastTModeFlag == 0) && (tMode == HIGH)){
+  if(lastTModeFlag == 0){
     //Reinitialize the iteration variables to start "recording" a new period of the wavefunction:
-    tModeFlag = 1;
-    digitalWrite(12,HIGH);
+
+    //digitalWrite(12,HIGH);
     t = 0;
-    i = 0;
-    delay(3000);
-    blinkLED(13,8,HIGH);
+    l = 0;
+    delay(1000);
+    blinkLED(13,5,HIGH,50);
     //Set the flag to start recording the wavefunction:
     lastTModeFlag = 1;
   }
 
   if(tModeFlag == 1){
-    waveFun[i] = f;
+    waveFun[l] = f;
+    /* Serial.print("WF value:"); */
+    /* Serial.println(waveFun[l]); */
   }
 
-  if((i+1) == maxPeriod){
+  if((l) == maxWf){
     //An entire period of the wavefunction has been captured in waveFun. Find its maximum value and arithmetic mean:
-
-    unsigned long currMax = 0;
-    unsigned int avg = 0;
+    //Serial.println("==Calculating max/avg==");
+    unsigned long avg = 0;
+    unsigned long navg = 0;
     int j=0;
 
-    for(j=0;j<=maxPeriod;j++){
-      if(waveFun[j] > currMax){
-        currMax = waveFun[j];
+    for(j=0;j<=maxWf;j++){
+      if(waveFun[j] > compMax){
+        compMax = waveFun[j];
+        /* Serial.println("==max=="); */
+        /* Serial.println(compMax); */
       }
-      avg += waveFun[j];
+      if(waveFun[j] != 0) {
+        avg += waveFun[j];
+        navg += 1;
+      }
     }
 
     //Set the comparator variables:
-    compAvg = avg/maxPeriod;
-    compMax = currMax;
 
+    compAvg = avg/navg;
+    /* Serial.println("==avg=="); */
+    /* Serial.println(compAvg); */
+    //compMax = currMax;
     //Exit training mode:
     t = 0;
-    i = 0;
+    l = 0;
     lastTModeFlag = 0;
     tModeFlag = 0;
-    blinkLED(13,8,LOW);
-    delay(2000);
+
+    blinkLED(13,2,LOW,250);
+    blinkLED(13,3,LOW,50);
+    blinkLED(13,5,LOW,25);
+
   }
   return;
 }
 
-void setComp(){
+void toggleLED(int id){
+  digitalWrite(id,not(digitalRead(id)));
+}
+
+void setComp(long f){
   //A function that, based on compAvg and compMax, creates gate-out signals
 
-  int compVals[2];
+  int j;
+  int i;
+  unsigned long tmpVal;
+  unsigned long funval;
   compVals[1] = compMax;
   compVals[2] = compAvg;
-  int j;
+
 
   for(j=0;j<2;j++) {
-    int i = j*2;
-    int tmpVal = compVals[j];
+    i = j*2;
 
-    if(fOut>=tmpVal){
+    tmpVal = compVals[j];
+
+    if(j == 1){
+      funval = f*0.5;
+    } else {
+      funval = f;
+    }
+
+    if(funval >=tmpVal){
       compState[i] = 1;
       if(compState[i] != compState[i+1]){
         //Set the gate signal to high, if its not already high:
         //analogWrite(0,255);
-        digitalWrite(10,HIGH);
+        compClk[j] += 1;
         compState[i+1] = 1;
+        if(not(maxIt % (maxIt/4))){
+          digitalWrite((j+9), HIGH);
+        }
+
       }
     } else {
       compState[i] = 0;
@@ -254,34 +288,68 @@ void setComp(){
       if(compState[i] != compState[i+1]){
         //Set the gate signal to low, if its not already low:
         //analogWrite(0,0);
-        digitalWrite(10,LOW);
+        compClk[j] -= 1;
         compState[i+1] = 0;
+        if(not(maxIt % (maxIt/4))){
+          digitalWrite((j+9), LOW);
+        }
       }
     }
   }
+
+  if(l == maxIt/4) {
+    for(j=0;j<2;j++) {
+      if(compClk[j] > 0){
+        toggleLED(j+9);
+      } else {
+        toggleLED(j+9);
+      }
+      //Reinitialize the comparator values.
+      compClk[2];
+    }
+  }
+  //Serial.print(compClk[1]);
+  //Serial.println(compClk[2]);
 }
 
   //TODO : remove all led-defining variables and set digital states just as numbers.
 void loop() {
 
-  //if ((++i != 64) || (digitalRead(13) == HIGH)) return;
+  int funId;
+  long fOut;
+  int tMode;
 
-  if (++i != maxPeriod) return;
-  i = 0;
+  //digitalWrite(12, LOW);
+  //  digitalWrite(10, LOW);
+  if(l > maxIt){
+    l = 0;
+    t = 0;
+  }
+
   t++;
+  l++;
+  //Serial.print("==");
+  //  Serial.print(l);
+  //Serial.print(":");
 
-  int tMode = digitalRead(12);
-  int modeId = getMode();
-  long fOut = setFunction(modeId);
+  //if (++i != maxIt) return;
+  //i = 0;
 
-  if(tMode == HIGH){
+  funId = funMode();
+  fOut = setFunction(funId);
+  setComp(fOut);
+  //setClock();
+
+
+  tMode = digitalRead(3);
+
+  if(tMode == HIGH) {
+    tModeFlag = 1;
+  }
+
+  if(tModeFlag == 1) {
     setTMode(fOut);
-
   } else {
     OCR2A = fOut;
-    //setClock();
-    delay(clkVal);
   }
-  setComp();
-  return;
 }
