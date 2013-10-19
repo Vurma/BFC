@@ -30,14 +30,16 @@ Digital In:
 If input 3 is connected to 3v3 volts, that input gets read as HIGH, which engages an algorithm that calculated threshold values, used by the comparator function to derive digital output signals from the PWM signal. These will, in future versions, be used for trigger and logic signals within the Eurorack system. The PWM output can be fed to the "hard sync" input of a VCO for interesting sequences.
 
 
-Dependencies:
+Dependencies
 ____________
 
-Tested using ino (http://inotool.org/) for compiling and uploading the sketch to the Arduino. It requires 1.0 version of the Arduino IDE. After running:
+Tested using ino (http://inotool.org/) for compiling and uploading the sketch to the Arduino and requires 1.0 version of the Arduino IDE.
+
+Installation
+____________
+
+in a new directory, connect your Arduino enter the following in the command line:
 
 git clone http://github.com/Vurma/BFC
-
-in a new directory, simply enter the following in the command line:
-
 ino build
 ino upload
