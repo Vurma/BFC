@@ -1,6 +1,9 @@
 BFC
 ===
 
+Description
+___________
+
 The Binary Function Computer is  a bytebeat-based oscillator for the modular synth. It was heavily influenced by information found on:
 
 http://countercomplex.blogspot.com/2011/10/algorithmic-symphonies-from-one-line-of.html
@@ -25,3 +28,16 @@ Digital In:
 11:PWM out -> speaker
 
 If input 3 is connected to 3v3 volts, that input gets read as HIGH, which engages an algorithm that calculated threshold values, used by the comparator function to derive digital output signals from the PWM signal. These will, in future versions, be used for trigger and logic signals within the Eurorack system. The PWM output can be fed to the "hard sync" input of a VCO for interesting sequences.
+
+
+Dependencies:
+____________
+
+Tested using ino (http://inotool.org/) for compiling and uploading the sketch to the Arduino. It requires 1.0 version of the Arduino IDE. After running:
+
+git clone http://github.com/Vurma/BFC
+
+in a new directory, simply enter the following in the command line:
+
+ino build
+ino upload
