@@ -17,3 +17,11 @@ http://www.muffwiggler.com/forum/viewtopic.php?t=95053#1321154
 Furthermore, this text focuses on the theoretical part of defining writing functions with specific tone durations:
 
 https://github.com/aempirei/Bit-Music/blob/master/README
+
+The current version is tested on Ubuntu 12.04 LTS on an arduino UNO, in the following configuration:
+
+Digital In:
+9,10: 2xLED
+11:PWM out -> speaker
+
+If input 3 is connected to 3v3 volts, that input gets read as HIGH, which engages an algorithm that calculated threshold values, used by the comparator function to derive digital output signals from the PWM signal. These will, in future versions, be used for trigger and logic signals within the Eurorack system. The PWM output can be fed to the "hard sync" input of a VCO for interesting sequences.
